@@ -70,13 +70,16 @@
   .stat:last-child{border-right:none;}
   .stat-value{font-family:var(--font-num); font-size:24px; font-weight:700; color:#eee; line-height:1;}
   .stat-label{font-size:9px; color:var(--grey); letter-spacing:1px; margin-top:5px; text-transform:uppercase;}
-  #speedVal{color:var(--amber);}
+  #speedBadge{width:48px; height:48px; border-radius:50%; background:#1c1c1c; border:3px solid var(--amber);
+    display:flex; align-items:center; justify-content:center; box-shadow:inset 0 0 8px rgba(0,0,0,0.6);}
+  #speedVal{color:var(--amber); font-size:20px;}
   #speedVal.over{color:var(--red);}
+  #speedBadge.over{border-color:var(--red); box-shadow:inset 0 0 8px rgba(0,0,0,0.6), 0 0 10px rgba(255,59,48,0.4);}
 
-  #limitSign{width:44px; height:44px; border-radius:50%; background:#fff; border:4px solid #cc0000;
-    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; color:#111;
-    font-family:Arial, sans-serif;}
-  #limitSign.none{background:#333; border-color:var(--line); color:var(--grey); font-size:10px;}
+  #limitSign{width:48px; height:48px; border-radius:50%; background:#fff; border:5px solid #cc0000;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px; color:#111;
+    font-family:'Arial Narrow', Arial, sans-serif; box-shadow:0 1px 4px rgba(0,0,0,0.4);}
+  #limitSign.none{background:#333; border-color:var(--line); color:var(--grey); font-size:9px; box-shadow:none;}
 
   #exitBtn{position:absolute; top:calc(env(safe-area-inset-top) + 8px); right:10px; z-index:20; width:30px; height:30px;
     border-radius:15px; background:rgba(20,20,20,0.7); border:1px solid var(--line);
@@ -94,6 +97,21 @@
   .info-pill{background:rgba(20,20,20,0.85); border:1px solid var(--line); border-radius:10px;
     padding:5px 9px; font-size:11px; color:#ddd; display:flex; align-items:center; gap:4px;}
   #battPill.low{color:var(--red); border-color:#5a1a1a;}
+  #fuelPill{cursor:pointer;}
+
+  body.day-mode{--bg:#eef0f2; --panel:#ffffff; --grey:#666; --line:#dcdfe3;}
+  body.day-mode #app{color:#111;}
+  body.day-mode #turnStreet{color:#555;}
+  body.day-mode .info-pill{background:rgba(255,255,255,0.9); color:#222;}
+  body.day-mode #wakeIndicator, body.day-mode #testBtn, body.day-mode #voiceToggle{background:rgba(255,255,255,0.9); color:#333;}
+  body.day-mode #exitBtn{background:rgba(255,255,255,0.9); color:#333;}
+  body.day-mode #recenterBtn, body.day-mode #satToggle{background:rgba(255,255,255,0.92);}
+  body.day-mode .stat-value{color:#222;}
+  body.day-mode #speedVal{color:#c25e00;}
+
+  #trafficWarning{display:none; align-items:center; gap:8px; background:rgba(255,59,48,0.12);
+    border:1px solid #5a1a1a; color:var(--red); font-size:12px; padding:8px 12px; border-radius:10px; margin-top:2px;}
+  #trafficWarning.show{display:flex;}
 
   #searchOverlay{position:absolute; inset:0; z-index:15; background:rgba(10,10,10,0.97); display:none;
     flex-direction:column; padding:16px; padding-top:calc(env(safe-area-inset-top) + 16px);}
@@ -183,6 +201,7 @@
       </div>
     </div>
     <div id="laneRow"></div>
+    <div id="trafficWarning">⚠ Heavy traffic ahead</div>
   </div>
 
   <div id="mapWrap">
@@ -193,6 +212,7 @@
       <div id="infoPanel">
         <div class="info-pill" id="weatherPill">--</div>
         <div class="info-pill" id="battPill">batt --</div>
+        <div class="info-pill" id="fuelPill">⛽ --</div>
       </div>
       <button id="exitBtn">✕</button>
       <div id="wakeIndicator">screen: on</div>
@@ -236,7 +256,7 @@
   </div>
 
   <div id="statusBar">
-    <div class="stat"><div class="stat-value" id="speedVal">0</div><div class="stat-label">mph</div></div>
+    <div class="stat"><div id="speedBadge"><div class="stat-value" id="speedVal">0</div></div><div class="stat-label">mph</div></div>
     <div class="stat"><div id="limitSign" class="none">--</div><div class="stat-label">limit</div></div>
     <div class="stat"><div class="stat-value" id="etaVal">--:--</div><div class="stat-label">ETA</div></div>
     <div class="stat"><div class="stat-value" id="distVal">--</div><div class="stat-label">remaining</div></div>
@@ -359,6 +379,8 @@ function initApp(token) {
     container: 'map', style: 'mapbox://styles/mapbox/dark-v11',
     center: [-3.0000, 51.5880], zoom: 15, pitch: 60, attributionControl: false
   });
+  map._dashStyleIsDay = false;
+  applyTimeTheme();
 
   map.on('error', (e) => { document.getElementById('turnStreet').textContent = 'Map error: ' + (e.error ? e.error.message : 'unknown'); });
   map.on('load', addMapLayers);
@@ -377,7 +399,12 @@ function initApp(token) {
 document.getElementById('satToggle').onclick = () => {
   satOn = !satOn;
   document.getElementById('satToggle').classList.toggle('on', satOn);
-  map.setStyle(satOn ? 'mapbox://styles/mapbox/satellite-streets-v12' : 'mapbox://styles/mapbox/dark-v11');
+  if (satOn) {
+    map.setStyle('mapbox://styles/mapbox/satellite-streets-v12');
+  } else {
+    map._dashStyleIsDay = null; // force applyTimeTheme to actually re-set the style
+    applyTimeTheme();
+  }
 };
 
 function startTracking() {
@@ -419,8 +446,10 @@ function onPosError(err) {
 let currentLimitMph = null;
 function updateSpeedColor(mph) {
   const speedEl = document.getElementById('speedVal');
-  if (currentLimitMph != null && mph > currentLimitMph + 2) speedEl.classList.add('over');
-  else speedEl.classList.remove('over');
+  const badgeEl = document.getElementById('speedBadge');
+  const isOver = currentLimitMph != null && mph > currentLimitMph + 2;
+  speedEl.classList.toggle('over', isOver);
+  badgeEl.classList.toggle('over', isOver);
 }
 
 // ---- WEATHER + BATTERY ----
@@ -464,10 +493,40 @@ if ('getBattery' in navigator) {
   document.getElementById('battPill').textContent = 'batt n/a'; // iOS Safari doesn't expose this API
 }
 
+// ---- FUEL RANGE (manual entry, no vehicle connection exists for this) ----
+const FUEL_KEY = 'dash_fuel_range';
+function renderFuel() {
+  const val = localStorage.getItem(FUEL_KEY);
+  document.getElementById('fuelPill').textContent = val ? '⛽ ' + val + 'mi' : '⛽ set';
+}
+renderFuel();
+document.getElementById('fuelPill').onclick = () => {
+  const current = localStorage.getItem(FUEL_KEY) || '';
+  const val = prompt('Remaining range in miles:', current);
+  if (val === null) return;
+  const num = parseInt(val, 10);
+  if (!isNaN(num) && num >= 0) { localStorage.setItem(FUEL_KEY, num); renderFuel(); }
+};
+
+// ---- DAY / NIGHT THEME ----
+function applyTimeTheme() {
+  const hour = new Date().getHours();
+  const isDay = hour >= 7 && hour < 19;
+  document.body.classList.toggle('day-mode', isDay);
+  if (map && !satOn) {
+    const wantStyle = isDay ? 'mapbox://styles/mapbox/light-v11' : 'mapbox://styles/mapbox/dark-v11';
+    if (map.getStyle && map._dashStyleIsDay !== isDay) {
+      map._dashStyleIsDay = isDay;
+      map.setStyle(wantStyle);
+    }
+  }
+}
+setInterval(applyTimeTheme, 5 * 60 * 1000);
+
 // ---- ROUTING (supports multiple ordered stops) ----
 async function updateRoute(origin, destsArray) {
   const coords = [origin, ...destsArray].map(c => c[0] + ',' + c[1]).join(';');
-  const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?geometries=geojson&overview=full&steps=true&annotations=maxspeed&access_token=${mapboxgl.accessToken}`;
+  const url = `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${coords}?geometries=geojson&overview=full&steps=true&annotations=maxspeed,congestion&access_token=${mapboxgl.accessToken}`;
   try {
     const res = await fetch(url);
     const data = await res.json();
@@ -475,6 +534,8 @@ async function updateRoute(origin, destsArray) {
     const route = data.routes[0];
     const setData = () => map.getSource('route').setData({ type:'Feature', geometry: route.geometry });
     if (map.getSource('route')) setData(); else pendingRouteData = { type:'Feature', geometry: route.geometry };
+
+    if (navigating) checkCongestion(route);
 
     if (navigating) {
       const step = route.legs[0].steps[0];
@@ -535,6 +596,28 @@ function renderLanes(step) {
     row.appendChild(div);
   });
 }
+function checkCongestion(route) {
+  const leg = route.legs[0];
+  const congestion = leg.annotation && leg.annotation.congestion;
+  const coords = route.geometry.coordinates;
+  const warningEl = document.getElementById('trafficWarning');
+  if (!congestion || !coords || coords.length < 2) { warningEl.classList.remove('show'); return; }
+  let congestedMeters = 0;
+  // only look at roughly the next 5km, no point warning about traffic near your final stop
+  let distSoFar = 0;
+  for (let i = 0; i < congestion.length && i < coords.length - 1 && distSoFar < 5000; i++) {
+    const segDist = haversine(coords[i], coords[i + 1]);
+    distSoFar += segDist;
+    if (congestion[i] === 'heavy' || congestion[i] === 'severe') congestedMeters += segDist;
+  }
+  if (congestedMeters > 200) {
+    warningEl.textContent = '⚠ Heavy traffic ahead (' + formatDist(congestedMeters) + ')';
+    warningEl.classList.add('show');
+  } else {
+    warningEl.classList.remove('show');
+  }
+}
+
 function formatDist(meters) {
   const miles = meters / 1609.34;
   return miles < 0.1 ? Math.round(meters) + 'm' : miles.toFixed(1) + 'mi';
@@ -656,6 +739,7 @@ function finishTrip() {
   document.getElementById('etaVal').textContent = '--:--';
   document.getElementById('limitSign').textContent = '--';
   document.getElementById('limitSign').classList.add('none');
+  document.getElementById('trafficWarning').classList.remove('show');
   if (map.getSource('route')) map.getSource('route').setData({ type:'Feature', geometry:{type:'LineString', coordinates:[]} });
 }
 
