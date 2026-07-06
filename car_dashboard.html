@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0a0a">
+<title>Dash</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl/2.15.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl/2.15.0/mapbox-gl.js"></script>
+<style>
+  :root{
+    --bg:#0a0a0a; --panel:#141414; --amber:#ff9500; --amber-dim:#7a4a00;
+    --red:#ff3b30; --grey:#8a8a8a; --line:#2a2a2a;
+    --font-num: 'Courier New', ui-monospace, monospace;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
+  html,body{margin:0; padding:0; width:100%; height:100%; background:var(--bg); color:#eee;
+    font-family:-apple-system, system-ui, sans-serif; overflow:hidden; position:fixed; inset:0;}
+  #app{display:flex; flex-direction:column; width:100%; height:100%;
+    padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom);}
+
+  #setup{position:absolute; inset:0; z-index:50; background:var(--bg);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; gap:14px;}
+  #setup.hidden{display:none;}
+  #setup h1{font-size:22px; letter-spacing:0.5px; margin:0 0 4px 0; color:var(--amber);}
+  #setup p{color:var(--grey); font-size:13px; line-height:1.5; max-width:340px; text-align:center; margin:0;}
+  #setup a{color:var(--amber);}
+  #tokenInput{width:100%; max-width:340px; padding:14px; font-size:15px; background:var(--panel);
+    border:1px solid var(--line); border-radius:8px; color:#eee; font-family:var(--font-num);}
+  #startBtn{width:100%; max-width:340px; padding:16px; font-size:16px; font-weight:600;
+    background:var(--amber); color:#000; border:none; border-radius:8px; letter-spacing:0.5px;}
+  #startBtn:active{background:#cc7700;}
+  #setupError{color:var(--red); font-size:13px; min-height:16px;}
+
+  #contextBanner{display:none; background:#3a2200; color:var(--amber); font-size:12px;
+    padding:8px 14px; text-align:center; border-bottom:1px solid var(--amber); flex-shrink:0;}
+  #contextBanner.show{display:block;}
+
+  #turnBanner{display:flex; flex-direction:column; gap:8px; background:var(--panel);
+    border-bottom:1px solid var(--line); padding:14px 18px; flex-shrink:0;}
+  #turnMain{display:flex; align-items:center; gap:16px;}
+  #turnIcon{width:44px; height:44px; flex-shrink:0; display:flex; align-items:center; justify-content:center;}
+  #turnIcon svg{width:36px; height:36px; stroke:var(--amber); fill:none; stroke-width:2.4;}
+  #turnText{flex:1; min-width:0;}
+  #turnDistance{font-family:var(--font-num); font-size:24px; color:var(--amber); font-weight:700; line-height:1;}
+  #turnStreet{font-size:14px; color:var(--grey); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  #laneRow{display:flex; gap:6px; padding-left:60px;}
+  .lane-icon{width:26px; height:26px; opacity:0.3; display:flex; align-items:center; justify-content:center;}
+  .lane-icon.valid{opacity:1;}
+  .lane-icon svg{width:22px; height:22px; stroke:var(--grey); fill:none; stroke-width:2.5;}
+  .lane-icon.valid svg{stroke:var(--amber);}
+
+  #mapWrap{flex:1; position:relative; min-height:0;}
+  #map{position:absolute; inset:0;}
+  #recenterBtn{position:absolute; bottom:16px; right:16px; z-index:10; width:48px; height:48px; border-radius:24px;
+    background:rgba(20,20,20,0.9); border:1px solid var(--line); display:flex; align-items:center; justify-content:center;}
+  #recenterBtn svg{width:24px; height:24px; stroke:var(--amber); fill:none; stroke-width:2;}
+
+  #statusBar{display:flex; align-items:stretch; background:var(--panel); border-top:1px solid var(--line); flex-shrink:0;}
+  .stat{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px 4px; border-right:1px solid var(--line);}
+  .stat:last-child{border-right:none;}
+  .stat-value{font-family:var(--font-num); font-size:24px; font-weight:700; color:#eee; line-height:1;}
+  .stat-label{font-size:9px; color:var(--grey); letter-spacing:1px; margin-top:5px; text-transform:uppercase;}
+  #speedVal{color:var(--amber);}
+  #speedVal.over{color:var(--red);}
+
+  #limitSign{width:44px; height:44px; border-radius:50%; background:#fff; border:4px solid #cc0000;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; color:#111;
+    font-family:Arial, sans-serif;}
+  #limitSign.none{background:#333; border-color:var(--line); color:var(--grey); font-size:10px;}
+
+  #exitBtn{position:absolute; top:calc(env(safe-area-inset-top) + 8px); right:10px; z-index:20; width:30px; height:30px;
+    border-radius:15px; background:rgba(20,20,20,0.7); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; color:var(--grey); font-size:14px;}
+  #wakeIndicator{position:absolute; top:calc(env(safe-area-inset-top) + 8px); left:10px; z-index:20; font-size:10px;
+    color:var(--grey); background:rgba(20,20,20,0.7); padding:4px 8px; border-radius:10px; border:1px solid var(--line);}
+  #testBtn{position:absolute; top:calc(env(safe-area-inset-top) + 44px); left:10px; z-index:20; font-size:11px;
+    color:var(--amber); background:rgba(20,20,20,0.85); padding:5px 10px; border-radius:10px; border:1px solid var(--amber-dim);}
+  #voiceToggle{position:absolute; top:calc(env(safe-area-inset-top) + 80px); left:10px; z-index:20; font-size:11px;
+    color:var(--grey); background:rgba(20,20,20,0.85); padding:5px 10px; border-radius:10px; border:1px solid var(--line);}
+  #voiceToggle.on{color:var(--amber); border-color:var(--amber-dim);}
+
+  #searchOverlay{position:absolute; inset:0; z-index:15; background:rgba(10,10,10,0.97); display:none;
+    flex-direction:column; padding:16px; padding-top:calc(env(safe-area-inset-top) + 16px);}
+  #searchOverlay.show{display:flex;}
+  #destInput{width:100%; padding:14px; font-size:16px; background:var(--panel); border:1px solid var(--line);
+    border-radius:8px; color:#eee; margin-bottom:10px;}
+  #searchResults{flex:1; overflow-y:auto;}
+  .result-item{padding:14px 10px; border-bottom:1px solid var(--line); font-size:14px;}
+  .result-main{color:#eee;}
+  .result-sub{color:var(--grey); font-size:12px; margin-top:2px;}
+  #destBtn{position:absolute; top:calc(env(safe-area-inset-top) + 8px); left:50%; transform:translateX(-50%); z-index:20;
+    background:rgba(20,20,20,0.85); border:1px solid var(--line); color:var(--grey); font-size:12px; padding:6px 14px; border-radius:14px;}
+</style>
+</head>
+<body>
+
+<div id="setup">
+  <h1>DASH SETUP</h1>
+  <p>Paste a free Mapbox access token to enable the map. Get one at
+    <a href="https://account.mapbox.com/access-tokens/" target="_blank">account.mapbox.com</a>
+    (no card needed on the free tier). Saved on this device only.</p>
+  <input id="tokenInput" placeholder="pk.eyJ1Ijoi..." autocomplete="off" autocapitalize="off" spellcheck="false">
+  <button id="startBtn">Start</button>
+  <div id="setupError"></div>
+</div>
+
+<div id="app">
+  <div id="contextBanner"></div>
+  <div id="turnBanner">
+    <div id="turnMain">
+      <div id="turnIcon"><svg viewBox="0 0 24 24"><path id="turnArrow" d="M12 19V5M12 5l-6 6M12 5l6 6"/></svg></div>
+      <div id="turnText">
+        <div id="turnDistance">--</div>
+        <div id="turnStreet">Enter a destination to start</div>
+      </div>
+    </div>
+    <div id="laneRow"></div>
+  </div>
+
+  <div id="mapWrap">
+    <div id="map"></div>
+    <button id="destBtn">Set destination</button>
+    <button id="testBtn">Test route: NP19 4AN</button>
+    <button id="voiceToggle">voice: off</button>
+    <button id="exitBtn">✕</button>
+    <div id="wakeIndicator">screen: on</div>
+    <button id="recenterBtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
+
+    <div id="searchOverlay">
+      <input id="destInput" placeholder="Where to?" autocomplete="off">
+      <div id="searchResults"></div>
+    </div>
+  </div>
+
+  <div id="statusBar">
+    <div class="stat"><div class="stat-value" id="speedVal">0</div><div class="stat-label">mph</div></div>
+    <div class="stat"><div id="limitSign" class="none">--</div><div class="stat-label">limit</div></div>
+    <div class="stat"><div class="stat-value" id="etaVal">--:--</div><div class="stat-label">ETA</div></div>
+    <div class="stat"><div class="stat-value" id="distVal">--</div><div class="stat-label">remaining</div></div>
+  </div>
+</div>
+
+<script>
+let map, userMarker, wakeLock = null, watchId = null;
+let destCoords = null;
+let lastRouteFetch = 0;
+const ROUTE_REFETCH_MS = 8000;
+let pendingRouteData = null;
+let camerasLoadedForBounds = null;
+let voiceOn = false;
+let lastSpokenInstruction = '';
+const TOKEN_KEY = 'dash_mapbox_token';
+const VOICE_KEY = 'dash_voice_on';
+
+// ---- SETUP ----
+const setupEl = document.getElementById('setup');
+const tokenInput = document.getElementById('tokenInput');
+const savedToken = localStorage.getItem(TOKEN_KEY);
+if (savedToken) tokenInput.value = savedToken;
+voiceOn = localStorage.getItem(VOICE_KEY) === '1';
+updateVoiceBtn();
+
+document.getElementById('startBtn').onclick = () => {
+  const token = tokenInput.value.trim();
+  const err = document.getElementById('setupError');
+  if (!token.startsWith('pk.')) { err.textContent = 'That doesn\'t look like a Mapbox public token (starts with "pk.").'; return; }
+  localStorage.setItem(TOKEN_KEY, token);
+  err.textContent = '';
+  setupEl.classList.add('hidden');
+  if (!map) initApp(token);
+};
+document.getElementById('exitBtn').onclick = () => setupEl.classList.remove('hidden');
+
+document.getElementById('voiceToggle').onclick = () => {
+  voiceOn = !voiceOn;
+  localStorage.setItem(VOICE_KEY, voiceOn ? '1' : '0');
+  updateVoiceBtn();
+  if (voiceOn) speak('Voice guidance on.');
+};
+function updateVoiceBtn() {
+  const btn = document.getElementById('voiceToggle');
+  btn.textContent = voiceOn ? 'voice: on' : 'voice: off';
+  btn.classList.toggle('on', voiceOn);
+}
+function speak(text) {
+  if (!voiceOn || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.0; u.lang = 'en-GB';
+  window.speechSynthesis.speak(u);
+}
+
+function checkSecureContext() {
+  const insecure = location.protocol === 'file:' ||
+    (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1');
+  const banner = document.getElementById('contextBanner');
+  if (insecure) {
+    banner.textContent = 'Running over ' + location.protocol + ' — GPS and wake lock are blocked without HTTPS.';
+    banner.classList.add('show');
+  }
+  return !insecure;
+}
+
+function initApp(token) {
+  mapboxgl.accessToken = token;
+  const secure = checkSecureContext();
+
+  map = new mapboxgl.Map({
+    container: 'map', style: 'mapbox://styles/mapbox/dark-v11',
+    center: [-3.0000, 51.5880], zoom: 15, pitch: 60, attributionControl: false
+  });
+
+  map.on('error', (e) => { document.getElementById('turnStreet').textContent = 'Map error: ' + (e.error ? e.error.message : 'unknown'); });
+
+  map.on('load', () => {
+    map.addSource('route', { type: 'geojson', data: { type:'Feature', geometry:{type:'LineString', coordinates:[]} } });
+    map.addLayer({ id: 'route-line', type: 'line', source: 'route',
+      layout: { 'line-join':'round', 'line-cap':'round' },
+      paint: { 'line-color':'#ff9500', 'line-width':6, 'line-opacity':0.85 } });
+
+    // 3D buildings
+    if (map.getSource('composite')) {
+      map.addLayer({
+        id: '3d-buildings', source: 'composite', 'source-layer': 'building',
+        filter: ['==', 'extrude', 'true'], type: 'fill-extrusion', minzoom: 13,
+        paint: {
+          'fill-extrusion-color': '#2c2c2c',
+          'fill-extrusion-height': ['coalesce', ['get', 'height'], 10],
+          'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0],
+          'fill-extrusion-opacity': 0.75
+        }
+      });
+    }
+
+    // camera icon
+    const camSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="11" fill="#ff3b30" stroke="#000" stroke-width="1.5"/>
+      <rect x="5" y="8" width="14" height="9" rx="1.5" fill="#111"/>
+      <circle cx="12" cy="12.5" r="3" fill="#ff9500"/>
+      <rect x="8" y="6" width="4" height="2.5" fill="#111"/>
+    </svg>`;
+    const camImg = new Image(40, 40);
+    camImg.onload = () => { if (!map.hasImage('camera-icon')) map.addImage('camera-icon', camImg); };
+    camImg.src = 'data:image/svg+xml;base64,' + btoa(camSvg);
+
+    map.addSource('cameras', { type: 'geojson', data: { type:'FeatureCollection', features:[] } });
+    map.addLayer({ id: 'camera-points', type: 'symbol', source: 'cameras',
+      layout: { 'icon-image': 'camera-icon', 'icon-size': 0.6, 'icon-allow-overlap': true } });
+
+    if (pendingRouteData) { map.getSource('route').setData(pendingRouteData); pendingRouteData = null; }
+    fetchCamerasInView();
+  });
+
+  map.on('moveend', () => { if (map.getZoom() >= 13) fetchCamerasInView(); });
+
+  const el = document.createElement('div');
+  el.style.width = '18px'; el.style.height = '18px'; el.style.borderRadius = '50%';
+  el.style.background = '#ff9500'; el.style.border = '3px solid #000'; el.style.boxShadow = '0 0 10px rgba(255,149,0,0.8)';
+  userMarker = new mapboxgl.Marker({ element: el }).setLngLat([-3.0000, 51.5880]).addTo(map);
+
+  if (secure) { startTracking(); requestWakeLock(); }
+  else { document.getElementById('turnStreet').textContent = 'Waiting for HTTPS host to enable GPS...'; }
+}
+
+function startTracking() {
+  if (!navigator.geolocation) { document.getElementById('turnStreet').textContent = 'Geolocation not available on this device.'; return; }
+  watchId = navigator.geolocation.watchPosition(onPosition, onPosError, { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 });
+}
+
+function onPosition(pos) {
+  const { longitude, latitude, speed, heading } = pos.coords;
+  userMarker.setLngLat([longitude, latitude]);
+  map.easeTo({ center: [longitude, latitude], bearing: heading || map.getBearing(), duration: 800 });
+  const mph = speed ? Math.max(0, Math.round(speed * 2.23694)) : 0;
+  document.getElementById('speedVal').textContent = mph;
+  updateSpeedColor(mph);
+
+  if (destCoords) {
+    const now = Date.now();
+    if (now - lastRouteFetch > ROUTE_REFETCH_MS) { lastRouteFetch = now; updateRoute([longitude, latitude], destCoords); }
+  }
+}
+function onPosError(err) {
+  document.getElementById('turnStreet').textContent = 'Location error: ' + err.message +
+    (err.code === 1 ? ' — check Settings > Privacy > Location Services for Safari.' : '');
+}
+
+let currentLimitMph = null;
+function updateSpeedColor(mph) {
+  const speedEl = document.getElementById('speedVal');
+  if (currentLimitMph != null && mph > currentLimitMph + 2) speedEl.classList.add('over');
+  else speedEl.classList.remove('over');
+}
+
+async function updateRoute(origin, dest) {
+  const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origin[0]},${origin[1]};${dest[0]},${dest[1]}?geometries=geojson&overview=full&steps=true&annotations=maxspeed&access_token=${mapboxgl.accessToken}`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.routes || !data.routes.length) { document.getElementById('turnStreet').textContent = 'No route found: ' + (data.message || 'try a different destination'); return; }
+    const route = data.routes[0];
+    const setData = () => map.getSource('route').setData({ type:'Feature', geometry: route.geometry });
+    if (map.getSource('route')) setData(); else pendingRouteData = { type:'Feature', geometry: route.geometry };
+
+    const step = route.legs[0].steps[0];
+    if (step) {
+      document.getElementById('turnDistance').textContent = formatDist(step.distance);
+      document.getElementById('turnStreet').textContent = step.maneuver.instruction;
+      setTurnIcon(step.maneuver.modifier || step.maneuver.type);
+      renderLanes(step);
+
+      if (step.maneuver.instruction !== lastSpokenInstruction) {
+        lastSpokenInstruction = step.maneuver.instruction;
+        speak(step.maneuver.instruction);
+      }
+    }
+
+    const ann = route.legs[0].annotation;
+    const limitEl = document.getElementById('limitSign');
+    if (ann && ann.maxspeed && ann.maxspeed.length) {
+      const ms = ann.maxspeed[0];
+      if (ms && !ms.unknown && ms.speed) {
+        const limitMph = ms.unit === 'km/h' ? Math.round(ms.speed * 0.621371) : ms.speed;
+        currentLimitMph = limitMph;
+        limitEl.textContent = limitMph;
+        limitEl.classList.remove('none');
+        updateSpeedColor(parseInt(document.getElementById('speedVal').textContent, 10) || 0);
+      } else {
+        currentLimitMph = null;
+        limitEl.textContent = '--';
+        limitEl.classList.add('none');
+      }
+    }
+
+    document.getElementById('distVal').textContent = formatDist(route.distance);
+    const eta = new Date(Date.now() + route.duration * 1000);
+    document.getElementById('etaVal').textContent = eta.getHours().toString().padStart(2,'0') + ':' + eta.getMinutes().toString().padStart(2,'0');
+  } catch (e) {
+    document.getElementById('turnStreet').textContent = 'Route request failed: ' + e.message;
+  }
+}
+
+function renderLanes(step) {
+  const row = document.getElementById('laneRow');
+  row.innerHTML = '';
+  const intersections = step.intersections;
+  if (!intersections || !intersections.length) return;
+  const last = intersections[intersections.length - 1];
+  if (!last.lanes) return;
+  const iconPaths = {
+    'straight': 'M12 19V5M12 5l-5 5M12 5l5 5',
+    'left': 'M19 12H5M5 12l6-6M5 12l6 6',
+    'right': 'M5 12h14M19 12l-6-6M19 12l-6 6',
+    'slight left': 'M18 18L8 8M8 8v6M8 8h6',
+    'slight right': 'M6 18L16 8M16 8v6M16 8h-6',
+    'sharp left': 'M20 20L6 6M6 6v10M6 6h10',
+    'sharp right': 'M4 20L18 6M18 6v10M18 6H8',
+    'uturn': 'M8 5v8a4 4 0 0 0 8 0V9M16 9l3 3M16 9l-3 3'
+  };
+  last.lanes.forEach(lane => {
+    const ind = (lane.indications && lane.indications[0]) || 'straight';
+    const path = iconPaths[ind] || iconPaths['straight'];
+    const div = document.createElement('div');
+    div.className = 'lane-icon' + (lane.valid ? ' valid' : '');
+    div.innerHTML = `<svg viewBox="0 0 24 24"><path d="${path}"/></svg>`;
+    row.appendChild(div);
+  });
+}
+
+function formatDist(meters) {
+  const miles = meters / 1609.34;
+  return miles < 0.1 ? Math.round(meters) + 'm' : miles.toFixed(1) + 'mi';
+}
+function setTurnIcon(modifier) {
+  const arrow = document.getElementById('turnArrow');
+  const paths = {
+    'left': 'M19 12H5M5 12l6-6M5 12l6 6', 'right': 'M5 12h14M19 12l-6-6M19 12l-6 6',
+    'straight': 'M12 19V5M12 5l-6 6M12 5l6 6', 'slight left': 'M19 17L9 7M9 7v7M9 7h7',
+    'slight right': 'M5 17L15 7M15 7v7M15 7H8', 'uturn': 'M8 5v8a4 4 0 0 0 8 0V9M16 9l3 3M16 9l-3 3'
+  };
+  arrow.setAttribute('d', paths[modifier] || paths['straight']);
+}
+
+async function fetchCamerasInView() {
+  if (!map) return;
+  const b = map.getBounds();
+  const bbox = `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
+  if (camerasLoadedForBounds === bbox) return;
+  camerasLoadedForBounds = bbox;
+  const query = `[out:json][timeout:15];node["highway"="speed_camera"](${bbox});out body;`;
+  try {
+    const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(query) });
+    const data = await res.json();
+    const features = (data.elements || []).map(n => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [n.lon, n.lat] }, properties: { id: n.id } }));
+    if (map.getSource('cameras')) map.getSource('cameras').setData({ type: 'FeatureCollection', features });
+  } catch (e) { console.error('camera fetch failed', e); }
+}
+
+document.getElementById('destBtn').onclick = () => { document.getElementById('searchOverlay').classList.add('show'); document.getElementById('destInput').focus(); };
+let searchTimeout;
+document.getElementById('destInput').oninput = (e) => {
+  clearTimeout(searchTimeout);
+  const q = e.target.value.trim();
+  if (q.length < 3) { document.getElementById('searchResults').innerHTML = ''; return; }
+  searchTimeout = setTimeout(() => searchPlaces(q), 350);
+};
+async function searchPlaces(query) {
+  const center = userMarker ? userMarker.getLngLat() : { lng:-3.0000, lat:51.5880 };
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?proximity=${center.lng},${center.lat}&country=gb&access_token=${mapboxgl.accessToken}`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    const list = document.getElementById('searchResults');
+    list.innerHTML = '';
+    (data.features || []).forEach(f => {
+      const div = document.createElement('div');
+      div.className = 'result-item';
+      div.innerHTML = `<div class="result-main">${f.text}</div><div class="result-sub">${f.place_name}</div>`;
+      div.onclick = () => selectDestination(f.center);
+      list.appendChild(div);
+    });
+    if (!data.features || !data.features.length) list.innerHTML = '<div class="result-item result-sub">No results.</div>';
+  } catch (e) { document.getElementById('searchResults').innerHTML = '<div class="result-item result-sub">Search failed: ' + e.message + '</div>'; }
+}
+function selectDestination(center) {
+  destCoords = center;
+  document.getElementById('searchOverlay').classList.remove('show');
+  document.getElementById('destInput').value = '';
+  document.getElementById('searchResults').innerHTML = '';
+  lastRouteFetch = Date.now();
+  lastSpokenInstruction = '';
+  const pos = userMarker.getLngLat();
+  updateRoute([pos.lng, pos.lat], destCoords);
+}
+document.getElementById('testBtn').onclick = async () => {
+  document.getElementById('turnStreet').textContent = 'Looking up NP19 4AN...';
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/NP19%204AN.json?country=gb&types=postcode&access_token=${mapboxgl.accessToken}`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.features && data.features.length) selectDestination(data.features[0].center);
+    else document.getElementById('turnStreet').textContent = 'Postcode lookup returned nothing.';
+  } catch (e) { document.getElementById('turnStreet').textContent = 'Postcode lookup failed: ' + e.message; }
+};
+document.getElementById('recenterBtn').onclick = () => {
+  if (!userMarker || !map) return;
+  const pos = userMarker.getLngLat();
+  map.easeTo({ center: pos, zoom: 16, duration: 500 });
+};
+
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      document.getElementById('wakeIndicator').textContent = 'screen: locked';
+      wakeLock.addEventListener('release', () => { document.getElementById('wakeIndicator').textContent = 'screen: released'; });
+    } else { document.getElementById('wakeIndicator').textContent = 'wake lock unsupported'; }
+  } catch (e) { document.getElementById('wakeIndicator').textContent = 'screen: lock failed'; }
+}
+document.addEventListener('visibilitychange', async () => { if (document.visibilityState === 'visible' && !wakeLock && map) requestWakeLock(); });
+</script>
+</body>
+</html>
