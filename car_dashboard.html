@@ -60,6 +60,11 @@
     background:rgba(20,20,20,0.9); border:1px solid var(--line); display:flex; align-items:center; justify-content:center;}
   #recenterBtn svg{width:24px; height:24px; stroke:var(--amber); fill:none; stroke-width:2;}
 
+  #satToggle{position:absolute; bottom:16px; right:72px; z-index:10; width:48px; height:48px; border-radius:24px;
+    background:rgba(20,20,20,0.9); border:1px solid var(--line); display:flex; align-items:center; justify-content:center;
+    font-size:10px; color:var(--grey); font-weight:700;}
+  #satToggle.on{color:var(--amber); border-color:var(--amber-dim);}
+
   #statusBar{display:flex; align-items:stretch; background:var(--panel); border-top:1px solid var(--line); flex-shrink:0;}
   .stat{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px 4px; border-right:1px solid var(--line);}
   .stat:last-child{border-right:none;}
@@ -84,17 +89,44 @@
     color:var(--grey); background:rgba(20,20,20,0.85); padding:5px 10px; border-radius:10px; border:1px solid var(--line);}
   #voiceToggle.on{color:var(--amber); border-color:var(--amber-dim);}
 
+  #infoPanel{position:absolute; top:calc(env(safe-area-inset-top) + 8px); right:48px; z-index:20;
+    display:flex; gap:6px;}
+  .info-pill{background:rgba(20,20,20,0.85); border:1px solid var(--line); border-radius:10px;
+    padding:5px 9px; font-size:11px; color:#ddd; display:flex; align-items:center; gap:4px;}
+  #battPill.low{color:var(--red); border-color:#5a1a1a;}
+
   #searchOverlay{position:absolute; inset:0; z-index:15; background:rgba(10,10,10,0.97); display:none;
     flex-direction:column; padding:16px; padding-top:calc(env(safe-area-inset-top) + 16px);}
   #searchOverlay.show{display:flex;}
   #destInput{width:100%; padding:14px; font-size:16px; background:var(--panel); border:1px solid var(--line);
     border-radius:8px; color:#eee; margin-bottom:10px;}
-  #searchResults{flex:1; overflow-y:auto;}
+  #searchResults{flex:1; overflow-y:auto; min-height:0;}
   .result-item{padding:14px 10px; border-bottom:1px solid var(--line); font-size:14px;}
   .result-main{color:#eee;}
   .result-sub{color:var(--grey); font-size:12px; margin-top:2px;}
+  #stopsChips{display:flex; flex-wrap:wrap; gap:6px; padding:10px 0; flex-shrink:0;}
+  .stop-chip{background:var(--panel); border:1px solid var(--amber-dim); color:var(--amber);
+    font-size:12px; padding:6px 10px; border-radius:14px; display:flex; align-items:center; gap:6px;}
+  .stop-chip .remove{color:var(--grey); font-weight:700;}
+  #previewBtn{width:100%; padding:14px; background:var(--amber); color:#000; border:none;
+    border-radius:8px; font-weight:700; font-size:15px; flex-shrink:0; margin-top:8px;}
+  #previewBtn:disabled{background:#333; color:var(--grey);}
   #destBtn{position:absolute; top:calc(env(safe-area-inset-top) + 8px); left:50%; transform:translateX(-50%); z-index:20;
     background:rgba(20,20,20,0.85); border:1px solid var(--line); color:var(--grey); font-size:12px; padding:6px 14px; border-radius:14px;}
+
+  #tripSummary{position:absolute; left:12px; right:12px; top:12px; z-index:14;
+    background:rgba(18,18,18,0.9); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:14px; display:none; flex-direction:column; gap:10px;}
+  #tripSummary.show{display:flex;}
+  #tripSummaryTop{display:flex; justify-content:space-between; align-items:baseline;}
+  #tripSummaryTime{font-family:var(--font-num); font-size:22px; color:var(--amber); font-weight:700;}
+  #tripSummaryDist{font-size:13px; color:var(--grey);}
+  #tripSummaryStops{font-size:12px; color:var(--grey);}
+  #tripButtons{display:flex; gap:10px;}
+  #goBtn{flex:1; padding:12px; background:var(--amber); color:#000; border:none; border-radius:10px; font-weight:700;}
+  #endTripBtn{flex:1; padding:12px; background:rgba(255,59,48,0.15); color:var(--red); border:1px solid #5a1a1a; border-radius:10px; font-weight:700; display:none;}
+  #endTripBtn.show{display:block;}
+  #goBtn.hidden{display:none;}
 
   #musicPanel{position:absolute; left:12px; right:12px; bottom:12px; z-index:12;
     background:rgba(18,18,18,0.72); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
@@ -147,7 +179,7 @@
       <div id="turnIcon"><svg viewBox="0 0 24 24"><path id="turnArrow" d="M12 19V5M12 5l-6 6M12 5l6 6"/></svg></div>
       <div id="turnText">
         <div id="turnDistance">--</div>
-        <div id="turnStreet">Enter a destination to start</div>
+        <div id="turnStreet">Tap "Plan trip" to add stops</div>
       </div>
     </div>
     <div id="laneRow"></div>
@@ -156,16 +188,34 @@
   <div id="mapWrap">
     <div id="mapInner">
       <div id="map"></div>
-      <button id="destBtn">Set destination</button>
-      <button id="testBtn">Test route: NP19 4AN</button>
+      <button id="destBtn">Plan trip</button>
       <button id="voiceToggle">voice: off</button>
+      <div id="infoPanel">
+        <div class="info-pill" id="weatherPill">--</div>
+        <div class="info-pill" id="battPill">batt --</div>
+      </div>
       <button id="exitBtn">✕</button>
       <div id="wakeIndicator">screen: on</div>
+      <button id="satToggle">SAT</button>
       <button id="recenterBtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
 
+      <div id="tripSummary">
+        <div id="tripSummaryTop">
+          <div id="tripSummaryTime">--</div>
+          <div id="tripSummaryDist">--</div>
+        </div>
+        <div id="tripSummaryStops">--</div>
+        <div id="tripButtons">
+          <button id="goBtn">GO</button>
+          <button id="endTripBtn">END TRIP</button>
+        </div>
+      </div>
+
       <div id="searchOverlay">
-        <input id="destInput" placeholder="Where to?" autocomplete="off">
+        <input id="destInput" placeholder="Add a stop..." autocomplete="off">
+        <div id="stopsChips"></div>
         <div id="searchResults"></div>
+        <button id="previewBtn" disabled>Preview trip</button>
       </div>
     </div>
 
@@ -195,13 +245,16 @@
 
 <script>
 let map, userMarker, wakeLock = null, watchId = null;
-let destCoords = null;
 let lastRouteFetch = 0;
 const ROUTE_REFETCH_MS = 8000;
 let pendingRouteData = null;
 let camerasLoadedForBounds = null;
 let voiceOn = false;
 let lastSpokenInstruction = '';
+let satOn = false;
+let navigating = false;
+let tripStops = []; // [{name, center:[lng,lat]}]
+let lastPos = null;
 const TOKEN_KEY = 'dash_mapbox_token';
 const VOICE_KEY = 'dash_voice_on';
 
@@ -254,6 +307,50 @@ function checkSecureContext() {
   return !insecure;
 }
 
+// ---- MAP LAYERS (re-added on every style load, since setStyle wipes custom layers) ----
+function addMapLayers() {
+  if (!map.getSource('route')) {
+    map.addSource('route', { type: 'geojson', data: { type:'Feature', geometry:{type:'LineString', coordinates:[]} } });
+  }
+  if (!map.getLayer('route-line')) {
+    map.addLayer({ id: 'route-line', type: 'line', source: 'route',
+      layout: { 'line-join':'round', 'line-cap':'round' },
+      paint: { 'line-color':'#ff9500', 'line-width':6, 'line-opacity':0.85 } });
+  }
+  if (map.getSource('composite') && !map.getLayer('3d-buildings')) {
+    map.addLayer({
+      id: '3d-buildings', source: 'composite', 'source-layer': 'building',
+      filter: ['==', 'extrude', 'true'], type: 'fill-extrusion', minzoom: 13,
+      paint: {
+        'fill-extrusion-color': '#2c2c2c',
+        'fill-extrusion-height': ['coalesce', ['get', 'height'], 10],
+        'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0],
+        'fill-extrusion-opacity': 0.75
+      }
+    });
+  }
+  if (!map.hasImage('camera-icon')) {
+    const camSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="11" fill="#ff3b30" stroke="#000" stroke-width="1.5"/>
+      <rect x="5" y="8" width="14" height="9" rx="1.5" fill="#111"/>
+      <circle cx="12" cy="12.5" r="3" fill="#ff9500"/>
+      <rect x="8" y="6" width="4" height="2.5" fill="#111"/>
+    </svg>`;
+    const camImg = new Image(40, 40);
+    camImg.onload = () => { if (!map.hasImage('camera-icon')) map.addImage('camera-icon', camImg); };
+    camImg.src = 'data:image/svg+xml;base64,' + btoa(camSvg);
+  }
+  if (!map.getSource('cameras')) {
+    map.addSource('cameras', { type: 'geojson', data: { type:'FeatureCollection', features:[] } });
+  }
+  if (!map.getLayer('camera-points')) {
+    map.addLayer({ id: 'camera-points', type: 'symbol', source: 'cameras',
+      layout: { 'icon-image': 'camera-icon', 'icon-size': 0.6, 'icon-allow-overlap': true } });
+  }
+  if (pendingRouteData && map.getSource('route')) { map.getSource('route').setData(pendingRouteData); pendingRouteData = null; }
+  fetchCamerasInView();
+}
+
 function initApp(token) {
   mapboxgl.accessToken = token;
   const secure = checkSecureContext();
@@ -264,46 +361,8 @@ function initApp(token) {
   });
 
   map.on('error', (e) => { document.getElementById('turnStreet').textContent = 'Map error: ' + (e.error ? e.error.message : 'unknown'); });
-
-  map.on('load', () => {
-    map.addSource('route', { type: 'geojson', data: { type:'Feature', geometry:{type:'LineString', coordinates:[]} } });
-    map.addLayer({ id: 'route-line', type: 'line', source: 'route',
-      layout: { 'line-join':'round', 'line-cap':'round' },
-      paint: { 'line-color':'#ff9500', 'line-width':6, 'line-opacity':0.85 } });
-
-    // 3D buildings
-    if (map.getSource('composite')) {
-      map.addLayer({
-        id: '3d-buildings', source: 'composite', 'source-layer': 'building',
-        filter: ['==', 'extrude', 'true'], type: 'fill-extrusion', minzoom: 13,
-        paint: {
-          'fill-extrusion-color': '#2c2c2c',
-          'fill-extrusion-height': ['coalesce', ['get', 'height'], 10],
-          'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0],
-          'fill-extrusion-opacity': 0.75
-        }
-      });
-    }
-
-    // camera icon
-    const camSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="11" fill="#ff3b30" stroke="#000" stroke-width="1.5"/>
-      <rect x="5" y="8" width="14" height="9" rx="1.5" fill="#111"/>
-      <circle cx="12" cy="12.5" r="3" fill="#ff9500"/>
-      <rect x="8" y="6" width="4" height="2.5" fill="#111"/>
-    </svg>`;
-    const camImg = new Image(40, 40);
-    camImg.onload = () => { if (!map.hasImage('camera-icon')) map.addImage('camera-icon', camImg); };
-    camImg.src = 'data:image/svg+xml;base64,' + btoa(camSvg);
-
-    map.addSource('cameras', { type: 'geojson', data: { type:'FeatureCollection', features:[] } });
-    map.addLayer({ id: 'camera-points', type: 'symbol', source: 'cameras',
-      layout: { 'icon-image': 'camera-icon', 'icon-size': 0.6, 'icon-allow-overlap': true } });
-
-    if (pendingRouteData) { map.getSource('route').setData(pendingRouteData); pendingRouteData = null; }
-    fetchCamerasInView();
-  });
-
+  map.on('load', addMapLayers);
+  map.on('style.load', () => { if (map.isStyleLoaded()) addMapLayers(); else map.once('idle', addMapLayers); });
   map.on('moveend', () => { if (map.getZoom() >= 13) fetchCamerasInView(); });
 
   const el = document.createElement('div');
@@ -315,22 +374,41 @@ function initApp(token) {
   else { document.getElementById('turnStreet').textContent = 'Waiting for HTTPS host to enable GPS...'; }
 }
 
+document.getElementById('satToggle').onclick = () => {
+  satOn = !satOn;
+  document.getElementById('satToggle').classList.toggle('on', satOn);
+  map.setStyle(satOn ? 'mapbox://styles/mapbox/satellite-streets-v12' : 'mapbox://styles/mapbox/dark-v11');
+};
+
 function startTracking() {
   if (!navigator.geolocation) { document.getElementById('turnStreet').textContent = 'Geolocation not available on this device.'; return; }
   watchId = navigator.geolocation.watchPosition(onPosition, onPosError, { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 });
 }
 
+function haversine(a, b) {
+  const R = 6371000, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(b[1] - a[1]), dLon = toRad(b[0] - a[0]);
+  const s = Math.sin(dLat/2)**2 + Math.cos(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
 function onPosition(pos) {
   const { longitude, latitude, speed, heading } = pos.coords;
-  userMarker.setLngLat([longitude, latitude]);
-  map.easeTo({ center: [longitude, latitude], bearing: heading || map.getBearing(), duration: 800 });
+  lastPos = [longitude, latitude];
+  userMarker.setLngLat(lastPos);
+  map.easeTo({ center: lastPos, bearing: heading || map.getBearing(), duration: 800 });
   const mph = speed ? Math.max(0, Math.round(speed * 2.23694)) : 0;
   document.getElementById('speedVal').textContent = mph;
   updateSpeedColor(mph);
+  fetchWeatherIfNeeded(latitude, longitude);
 
-  if (destCoords) {
+  if (navigating && tripStops.length) {
+    if (haversine(lastPos, tripStops[0].center) < 40) {
+      tripStops.shift();
+      if (!tripStops.length) { finishTrip(); return; }
+    }
     const now = Date.now();
-    if (now - lastRouteFetch > ROUTE_REFETCH_MS) { lastRouteFetch = now; updateRoute([longitude, latitude], destCoords); }
+    if (now - lastRouteFetch > ROUTE_REFETCH_MS) { lastRouteFetch = now; updateRoute(lastPos, tripStops.map(s => s.center)); }
   }
 }
 function onPosError(err) {
@@ -345,51 +423,93 @@ function updateSpeedColor(mph) {
   else speedEl.classList.remove('over');
 }
 
-async function updateRoute(origin, dest) {
-  const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origin[0]},${origin[1]};${dest[0]},${dest[1]}?geometries=geojson&overview=full&steps=true&annotations=maxspeed&access_token=${mapboxgl.accessToken}`;
+// ---- WEATHER + BATTERY ----
+let lastWeatherFetch = 0;
+async function fetchWeatherIfNeeded(lat, lon) {
+  const now = Date.now();
+  if (now - lastWeatherFetch < 10 * 60 * 1000) return;
+  lastWeatherFetch = now;
+  try {
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code`);
+    const data = await res.json();
+    const t = Math.round(data.current.temperature_2m);
+    const code = data.current.weather_code;
+    document.getElementById('weatherPill').textContent = weatherIcon(code) + ' ' + t + '°C';
+  } catch (e) { document.getElementById('weatherPill').textContent = 'wx n/a'; }
+}
+function weatherIcon(code) {
+  if (code === 0) return '☀';
+  if (code <= 2) return '⛅';
+  if (code === 3) return '☁';
+  if (code >= 45 && code <= 48) return '🌫';
+  if (code >= 51 && code <= 67) return '🌧';
+  if (code >= 71 && code <= 77) return '❄';
+  if (code >= 80 && code <= 82) return '🌦';
+  if (code >= 95) return '⛈';
+  return '—';
+}
+if ('getBattery' in navigator) {
+  navigator.getBattery().then(batt => {
+    const update = () => {
+      const pct = Math.round(batt.level * 100);
+      const el = document.getElementById('battPill');
+      el.textContent = (batt.charging ? '⚡' : '') + pct + '%';
+      el.classList.toggle('low', pct <= 20 && !batt.charging);
+    };
+    update();
+    batt.addEventListener('levelchange', update);
+    batt.addEventListener('chargingchange', update);
+  }).catch(() => { document.getElementById('battPill').textContent = 'batt n/a'; });
+} else {
+  document.getElementById('battPill').textContent = 'batt n/a'; // iOS Safari doesn't expose this API
+}
+
+// ---- ROUTING (supports multiple ordered stops) ----
+async function updateRoute(origin, destsArray) {
+  const coords = [origin, ...destsArray].map(c => c[0] + ',' + c[1]).join(';');
+  const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?geometries=geojson&overview=full&steps=true&annotations=maxspeed&access_token=${mapboxgl.accessToken}`;
   try {
     const res = await fetch(url);
     const data = await res.json();
-    if (!data.routes || !data.routes.length) { document.getElementById('turnStreet').textContent = 'No route found: ' + (data.message || 'try a different destination'); return; }
+    if (!data.routes || !data.routes.length) { document.getElementById('turnStreet').textContent = 'No route found: ' + (data.message || 'try different stops'); return null; }
     const route = data.routes[0];
     const setData = () => map.getSource('route').setData({ type:'Feature', geometry: route.geometry });
     if (map.getSource('route')) setData(); else pendingRouteData = { type:'Feature', geometry: route.geometry };
 
-    const step = route.legs[0].steps[0];
-    if (step) {
-      document.getElementById('turnDistance').textContent = formatDist(step.distance);
-      document.getElementById('turnStreet').textContent = step.maneuver.instruction;
-      setTurnIcon(step.maneuver.modifier || step.maneuver.type);
-      renderLanes(step);
-
-      if (step.maneuver.instruction !== lastSpokenInstruction) {
-        lastSpokenInstruction = step.maneuver.instruction;
-        speak(step.maneuver.instruction);
+    if (navigating) {
+      const step = route.legs[0].steps[0];
+      if (step) {
+        document.getElementById('turnDistance').textContent = formatDist(step.distance);
+        document.getElementById('turnStreet').textContent = step.maneuver.instruction;
+        setTurnIcon(step.maneuver.modifier || step.maneuver.type);
+        renderLanes(step);
+        if (step.maneuver.instruction !== lastSpokenInstruction) {
+          lastSpokenInstruction = step.maneuver.instruction;
+          speak(step.maneuver.instruction);
+        }
       }
-    }
-
-    const ann = route.legs[0].annotation;
-    const limitEl = document.getElementById('limitSign');
-    if (ann && ann.maxspeed && ann.maxspeed.length) {
-      const ms = ann.maxspeed[0];
-      if (ms && !ms.unknown && ms.speed) {
-        const limitMph = ms.unit === 'km/h' ? Math.round(ms.speed * 0.621371) : ms.speed;
-        currentLimitMph = limitMph;
-        limitEl.textContent = limitMph;
-        limitEl.classList.remove('none');
-        updateSpeedColor(parseInt(document.getElementById('speedVal').textContent, 10) || 0);
-      } else {
-        currentLimitMph = null;
-        limitEl.textContent = '--';
-        limitEl.classList.add('none');
+      const ann = route.legs[0].annotation;
+      const limitEl = document.getElementById('limitSign');
+      if (ann && ann.maxspeed && ann.maxspeed.length) {
+        const ms = ann.maxspeed[0];
+        if (ms && !ms.unknown && ms.speed) {
+          const limitMph = ms.unit === 'km/h' ? Math.round(ms.speed * 0.621371) : ms.speed;
+          currentLimitMph = limitMph;
+          limitEl.textContent = limitMph;
+          limitEl.classList.remove('none');
+          updateSpeedColor(parseInt(document.getElementById('speedVal').textContent, 10) || 0);
+        } else {
+          currentLimitMph = null; limitEl.textContent = '--'; limitEl.classList.add('none');
+        }
       }
+      document.getElementById('distVal').textContent = formatDist(route.distance);
+      const eta = new Date(Date.now() + route.duration * 1000);
+      document.getElementById('etaVal').textContent = eta.getHours().toString().padStart(2,'0') + ':' + eta.getMinutes().toString().padStart(2,'0');
     }
-
-    document.getElementById('distVal').textContent = formatDist(route.distance);
-    const eta = new Date(Date.now() + route.duration * 1000);
-    document.getElementById('etaVal').textContent = eta.getHours().toString().padStart(2,'0') + ':' + eta.getMinutes().toString().padStart(2,'0');
+    return route;
   } catch (e) {
     document.getElementById('turnStreet').textContent = 'Route request failed: ' + e.message;
+    return null;
   }
 }
 
@@ -401,14 +521,10 @@ function renderLanes(step) {
   const last = intersections[intersections.length - 1];
   if (!last.lanes) return;
   const iconPaths = {
-    'straight': 'M12 19V5M12 5l-5 5M12 5l5 5',
-    'left': 'M19 12H5M5 12l6-6M5 12l6 6',
-    'right': 'M5 12h14M19 12l-6-6M19 12l-6 6',
-    'slight left': 'M18 18L8 8M8 8v6M8 8h6',
-    'slight right': 'M6 18L16 8M16 8v6M16 8h-6',
-    'sharp left': 'M20 20L6 6M6 6v10M6 6h10',
-    'sharp right': 'M4 20L18 6M18 6v10M18 6H8',
-    'uturn': 'M8 5v8a4 4 0 0 0 8 0V9M16 9l3 3M16 9l-3 3'
+    'straight': 'M12 19V5M12 5l-5 5M12 5l5 5', 'left': 'M19 12H5M5 12l6-6M5 12l6 6',
+    'right': 'M5 12h14M19 12l-6-6M19 12l-6 6', 'slight left': 'M18 18L8 8M8 8v6M8 8h6',
+    'slight right': 'M6 18L16 8M16 8v6M16 8h-6', 'sharp left': 'M20 20L6 6M6 6v10M6 6h10',
+    'sharp right': 'M4 20L18 6M18 6v10M18 6H8', 'uturn': 'M8 5v8a4 4 0 0 0 8 0V9M16 9l3 3M16 9l-3 3'
   };
   last.lanes.forEach(lane => {
     const ind = (lane.indications && lane.indications[0]) || 'straight';
@@ -419,10 +535,14 @@ function renderLanes(step) {
     row.appendChild(div);
   });
 }
-
 function formatDist(meters) {
   const miles = meters / 1609.34;
   return miles < 0.1 ? Math.round(meters) + 'm' : miles.toFixed(1) + 'mi';
+}
+function formatDuration(seconds) {
+  const mins = Math.round(seconds / 60);
+  if (mins < 60) return mins + ' min';
+  return Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm';
 }
 function setTurnIcon(modifier) {
   const arrow = document.getElementById('turnArrow');
@@ -449,7 +569,12 @@ async function fetchCamerasInView() {
   } catch (e) { console.error('camera fetch failed', e); }
 }
 
-document.getElementById('destBtn').onclick = () => { document.getElementById('searchOverlay').classList.add('show'); document.getElementById('destInput').focus(); };
+// ---- TRIP PLANNING ----
+document.getElementById('destBtn').onclick = () => {
+  document.getElementById('searchOverlay').classList.add('show');
+  document.getElementById('destInput').focus();
+  renderStopsChips();
+};
 let searchTimeout;
 document.getElementById('destInput').oninput = (e) => {
   clearTimeout(searchTimeout);
@@ -458,7 +583,7 @@ document.getElementById('destInput').oninput = (e) => {
   searchTimeout = setTimeout(() => searchPlaces(q), 350);
 };
 async function searchPlaces(query) {
-  const center = userMarker ? userMarker.getLngLat() : { lng:-3.0000, lat:51.5880 };
+  const center = lastPos ? { lng: lastPos[0], lat: lastPos[1] } : { lng:-3.0000, lat:51.5880 };
   const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?proximity=${center.lng},${center.lat}&country=gb&access_token=${mapboxgl.accessToken}`;
   try {
     const res = await fetch(url);
@@ -469,32 +594,71 @@ async function searchPlaces(query) {
       const div = document.createElement('div');
       div.className = 'result-item';
       div.innerHTML = `<div class="result-main">${f.text}</div><div class="result-sub">${f.place_name}</div>`;
-      div.onclick = () => selectDestination(f.center);
+      div.onclick = () => addStop(f.text, f.center);
       list.appendChild(div);
     });
     if (!data.features || !data.features.length) list.innerHTML = '<div class="result-item result-sub">No results.</div>';
   } catch (e) { document.getElementById('searchResults').innerHTML = '<div class="result-item result-sub">Search failed: ' + e.message + '</div>'; }
 }
-function selectDestination(center) {
-  destCoords = center;
-  document.getElementById('searchOverlay').classList.remove('show');
+function addStop(name, center) {
+  tripStops.push({ name, center });
   document.getElementById('destInput').value = '';
   document.getElementById('searchResults').innerHTML = '';
-  lastRouteFetch = Date.now();
-  lastSpokenInstruction = '';
-  const pos = userMarker.getLngLat();
-  updateRoute([pos.lng, pos.lat], destCoords);
+  renderStopsChips();
 }
-document.getElementById('testBtn').onclick = async () => {
-  document.getElementById('turnStreet').textContent = 'Looking up NP19 4AN...';
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/NP19%204AN.json?country=gb&types=postcode&access_token=${mapboxgl.accessToken}`;
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.features && data.features.length) selectDestination(data.features[0].center);
-    else document.getElementById('turnStreet').textContent = 'Postcode lookup returned nothing.';
-  } catch (e) { document.getElementById('turnStreet').textContent = 'Postcode lookup failed: ' + e.message; }
+function renderStopsChips() {
+  const wrap = document.getElementById('stopsChips');
+  wrap.innerHTML = '';
+  tripStops.forEach((s, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'stop-chip';
+    chip.innerHTML = `<span>${i+1}. ${s.name}</span><span class="remove">✕</span>`;
+    chip.querySelector('.remove').onclick = () => { tripStops.splice(i, 1); renderStopsChips(); };
+    wrap.appendChild(chip);
+  });
+  document.getElementById('previewBtn').disabled = tripStops.length === 0;
+}
+
+document.getElementById('previewBtn').onclick = async () => {
+  if (!lastPos || !tripStops.length) return;
+  document.getElementById('previewBtn').textContent = 'Calculating...';
+  const route = await updateRoute(lastPos, tripStops.map(s => s.center));
+  document.getElementById('previewBtn').textContent = 'Preview trip';
+  if (!route) return;
+  document.getElementById('searchOverlay').classList.remove('show');
+  document.getElementById('tripSummaryTime').textContent = formatDuration(route.duration);
+  document.getElementById('tripSummaryDist').textContent = formatDist(route.distance);
+  document.getElementById('tripSummaryStops').textContent = tripStops.map(s => s.name).join(' → ');
+  document.getElementById('tripSummary').classList.add('show');
+  document.getElementById('goBtn').classList.remove('hidden');
+  document.getElementById('endTripBtn').classList.remove('show');
 };
+
+document.getElementById('goBtn').onclick = () => {
+  navigating = true;
+  lastSpokenInstruction = '';
+  lastRouteFetch = Date.now();
+  document.getElementById('goBtn').classList.add('hidden');
+  document.getElementById('endTripBtn').classList.add('show');
+  document.getElementById('turnStreet').textContent = 'Starting navigation...';
+  if (lastPos) updateRoute(lastPos, tripStops.map(s => s.center));
+};
+document.getElementById('endTripBtn').onclick = () => finishTrip();
+
+function finishTrip() {
+  navigating = false;
+  tripStops = [];
+  document.getElementById('tripSummary').classList.remove('show');
+  document.getElementById('turnDistance').textContent = '--';
+  document.getElementById('turnStreet').textContent = 'Tap "Plan trip" to add stops';
+  document.getElementById('laneRow').innerHTML = '';
+  document.getElementById('distVal').textContent = '--';
+  document.getElementById('etaVal').textContent = '--:--';
+  document.getElementById('limitSign').textContent = '--';
+  document.getElementById('limitSign').classList.add('none');
+  if (map.getSource('route')) map.getSource('route').setData({ type:'Feature', geometry:{type:'LineString', coordinates:[]} });
+}
+
 document.getElementById('recenterBtn').onclick = () => {
   if (!userMarker || !map) return;
   const pos = userMarker.getLngLat();
@@ -513,9 +677,8 @@ async function requestWakeLock() {
 document.addEventListener('visibilitychange', async () => { if (document.visibilityState === 'visible' && !wakeLock && map) requestWakeLock(); });
 
 // ---- MOCK NOW PLAYING ----
-// This does not connect to Apple Music, Spotify, or anything else.
-// It's a visual now-playing card. Use Siri/Bluetooth for the real audio,
-// and update the mockTracks array below with whatever you're actually playing.
+// Does not connect to Apple Music, Spotify, or anything else. Visual only.
+// Use Siri/Bluetooth for real audio, edit mockTracks below to match what's playing.
 const mockTracks = [
   { title: 'Nothing queued', artist: 'tap play', color1:'#2a2a2a', color2:'#111' },
   { title: 'Blinding Lights', artist: 'The Weeknd', color1:'#3a1a1a', color2:'#1a0808' },
@@ -535,7 +698,7 @@ function renderMockTrack() {
 renderMockTrack();
 
 document.getElementById('playBtn').onclick = () => {
-  if (mockIndex === 0) mockIndex = 1; // jump off the empty state on first tap
+  if (mockIndex === 0) mockIndex = 1;
   mockPlaying = !mockPlaying;
   document.getElementById('playIcon').setAttribute('d', mockPlaying ? 'M6 5h4v14H6zm8 0h4v14h-4z' : 'M8 5v14l11-7z');
   document.getElementById('musicArtWrap').classList.toggle('playing', mockPlaying);
